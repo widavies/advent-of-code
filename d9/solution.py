@@ -1,81 +1,69 @@
-from queue import Queue
+from functools import reduce
+from math import prod
+import time
 
 with open('input.txt') as f:
-    matrix = list(map(lambda x: [':', *x, ':'], f.read().splitlines()))
-    matrix = [[':']*len(matrix[0]), *matrix, [':']*len(matrix[0])]
+    matrix = [[10] + [int(h) for x, h in enumerate(l.strip())] + [10] for y, l in enumerate(f.readlines())]
+    matrix = [[10]*len(matrix[0]), *matrix, [10]*len(matrix[0])]
 
-    empty = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
+    corners = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+    M, N = len(matrix), len(matrix[0])
 
-    q = Queue()
+    # Count the size of the basin at cx, cy
+    def spiral(cx, cy, height_mode=False):
+        if not all([matrix[cy + j][cx + k] > matrix[cy][cx] for j, k in corners]):
+            return 0
+        elif height_mode:
+            return int(matrix[cy][cx]) + 1
 
-    for row in range(1, len(matrix) - 1):
-        for col in range(1, len(matrix[row]) - 1):
-            left = matrix[row][col - 1] > matrix[row][col]
-            right = matrix[row][col + 1] > matrix[row][col]
-            up = matrix[row - 1][col] > matrix[row][col]
-            down = matrix[row + 1][col] > matrix[row][col]
+        adjacent = {(cy, cx)}
 
-            empty[row][col] = int(left and right and up and down)
+        def check_point(a, b):
+            if not (1 <= a < N - 1 and 1 <= b < M - 1) or (b, a) in adjacent or matrix[b][a] == 9:
+                return 0
 
-            if int(left and right and up and down):
-                q.put((col, row))
+            res = any([(b + j, a + k) in adjacent for j, k in corners])
 
-    M = len(matrix)
-    N = len(matrix[0])
+            if res:
+                adjacent.add((b, a))
 
-    # Checks if zx/zy should be added
-    # returns the next points to search, otherwise
-    def maybe_add(zx, zy, direction):
-        # The point is out of bounds
-        if zx < 1 or zx >= N - 1 or zy < 1 or zy >= M - 1:
-            return []
+            return res
 
-        # We've already evaluated this point
-        if empty[zy][zx] != 0:
-            return []
+        size, radius, last, found = 1, 1, -1, 0
 
-        if matrix[zy][zx] == 9:
-            return []
+        while last != found:
+            last = found
+            found = 0
 
-        # Check the point we came from
-        if direction == 'west' and matrix[zy][zx] > matrix[zy][zx + 1]:
-            print("DOPE")
-            empty[zy][zx] = empty[zy][zx + 1] + 1
-            return [(zx, zy - 1), (zx - 1, zy)]
-        if direction == 'east' and matrix[zy][zx] > matrix[zy][zx - 1]:
-            empty[zy][zx] = empty[zy][zx - 1] + 1
-            return [(zx + 1, zy), (zx, zy + 1)]
-        if direction == 'north' and matrix[zy][zx] > matrix[zy - 1][zx]:
-            empty[zy][zx] = empty[zy + 1][zx] + 1
-            return [(zx, zy - 1), (zx + 1, zy)]
-        if direction == 'south' and matrix[zy][zx] > matrix[zy - 1][zx]:
-            return [(zx - 1, zy), (zx, zy + 1)]
+            # Top & Bottom
+            for x in range(cx - radius, cx + radius + 1):
+                found += check_point(x, cy - radius) + check_point(x, cy + radius)
 
-        return []
+            # Left & Right
+            for y in range(cy - radius + 1, cy + radius):
+                found += check_point(cx - radius, y) + check_point(cx + radius, y)
+
+            size += found
+            radius += int(found == 0)
+
+        return size
 
 
+    t0 = time.time()
 
-    while not q.empty():
-        x, y = q.get()
+    # Part one
+    counts = [spiral(x, y, height_mode=True) for x in range(1, N - 1) for y in range(1, M - 1)]
+    print(sum(counts))
 
-        print(x, y)
+    # Part two
+    counts = [spiral(x, y) for x in range(1, N - 1) for y in range(1, M - 1)]
+    print(prod(sorted(counts)[-3:]))
 
-        for p in maybe_add(x - 1, y, 'west'):
-            q.put(p)
-        for p in maybe_add(x + 1, y, 'east'):
-            q.put(p)
-        for p in maybe_add(x, y - 1, 'north'):
-            q.put(p)
-        for p in maybe_add(x, y + 1, 'south'):
-            q.put(p)
+    t1 = time.time()
 
+    total = t1 - t0
+    print(total)
 
-    for row in empty:
-        for col in row:
-            print(col, end=' ')
-        print()
-
-
-
-
-
+    # Improvements:
+    # - Instead of checking if it's a neighbor, just produce a list of neighbors for each point
+    # - Insight: Don't need to check neighbors height at all - basins don't mix, so they must be separated by 9s
