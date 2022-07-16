@@ -2,10 +2,12 @@
 from functools import reduce
 from operator import add
 
+
 def load_nums():
     with open('input.txt', 'r') as f:
         nums = list(map(lambda line: [int(digit) for digit in line.rstrip('\n')], f.readlines()))
         return nums
+
 
 # nums is an array of digit arrays
 def get_common(nums):
@@ -18,15 +20,17 @@ def get_common(nums):
 
     return common, uncommon
 
+
 def to_binary(digits):
     return int(''.join(list(map(str, digits))), 2)
+
 
 def p1():
     a, b = get_common(load_nums())
     return to_binary(a) * to_binary(b)
 
-def p2():
 
+def p2():
     # Load all numbers
     items = load_nums()
 
