@@ -50,3 +50,4 @@ print(count)
 # Filter using a dict.get is nice
 # Instead of recursion, a stack/queue is a nice alternative
 # Problems: 0,0 neighbor? Get rid of modulo?
+# Eliminate sqrt L thing?
