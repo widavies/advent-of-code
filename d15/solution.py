@@ -1,4 +1,5 @@
 # Idea: basic A* search
+import time
 from collections import defaultdict
 
 import heapq
@@ -125,31 +126,37 @@ def solve(start, goal, h):
             score = 0
 
             while n != start:
-                score += lookup(*n)
+                score += full_map[n[0] + n[1] * width]
                 n = came_from[n]
 
             return score
 
         for neighbor in adjacent_matrix[current]:
-            tentative_g_score = g_score[current] + lookup(*neighbor)
+            tentative_g_score = g_score[current] + full_map[neighbor[0] + neighbor[1] * width]
 
             if tentative_g_score < g_score[neighbor]:
-                past = f_score[neighbor]
                 came_from[neighbor] = current
                 g_score[neighbor] = tentative_g_score
                 f_score[neighbor] = tentative_g_score + h(*neighbor)
 
-                if (past, neighbor) in open_set:
-                    open_set.remove((past, neighbor))
+                # if (past, neighbor) in open_set:
+                #     open_set.remove((past, neighbor))
 
                 heapq.heappush(open_set, (f_score[neighbor], neighbor))
 
 
 # Part 1
-print(solve((0, 0), (og_width - 1, og_height - 1), heuristic))
+for i in range(10):
+    t0 = time.time()
 
-# Part 2
-print(solve((0, 0), (width - 1, height - 1), heuristic))
+    print(solve((0, 0), (og_width - 1, og_height - 1), heuristic))
+
+    # Part 2
+    print(solve((0, 0), (width - 1, height - 1), heuristic))
+
+    t1 = time.time()
+
+    print(t1 - t0)
 
 # Possible improvements
 # Fibonacci heap?
