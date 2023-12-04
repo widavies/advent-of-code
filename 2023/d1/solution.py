@@ -1,7 +1,7 @@
 import re
 import time
 
-with open('inputs/input-d1.txt') as f:
+with open('input.txt') as f:
     count = 0
 
     start = time.process_time()

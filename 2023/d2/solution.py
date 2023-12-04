@@ -1,6 +1,6 @@
 import re
 
-with open('inputs/input-d2.txt') as f:
+with open('input.txt') as f:
     gid = 1
 
     good_sum = 0
