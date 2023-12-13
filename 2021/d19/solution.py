@@ -17,128 +17,98 @@ with open('input.txt') as f:
     if run:
         scanners.append(run)
 
+transforms = [
+    lambda v: (v[0], v[1], v[2]),
+    lambda v: (v[0], -v[1], -v[2]),
+    lambda v: (v[0], v[2], -v[1]),
+    lambda v: (v[0], -v[2], v[1]),
+    lambda v: (-v[0], v[1], -v[2]),
+    lambda v: (-v[0], -v[1], v[2]),
+    lambda v: (-v[0], v[2], v[1]),
+    lambda v: (-v[0], -v[2], -v[1]),
+    lambda v: (v[1], -v[0], v[2]),
+    lambda v: (v[1], v[0], -v[2]),
+    lambda v: (v[1], -v[2], -v[0]),
+    lambda v: (v[1], v[2], v[0]),
+    lambda v: (-v[1], v[0], v[2]),
+    lambda v: (-v[1], -v[0], -v[2]),
+    lambda v: (-v[1], v[2], -v[0]),
+    lambda v: (-v[1], -v[2], v[0]),
+    lambda v: (v[2], -v[0], -v[1]),
+    lambda v: (v[2], v[0], v[1]),
+    lambda v: (v[2], v[1], -v[0]),
+    lambda v: (v[2], -v[1], v[0]),
+    lambda v: (-v[2], v[0], -v[1]),
+    lambda v: (-v[2], -v[0], v[1]),
+    lambda v: (-v[2], v[1], v[0]),
+    lambda v: (-v[2], -v[1], -v[0])
+]
 
-def transform(code, coords):
-    (x, y, z) = coords
 
-    swaps = [
-        (x, y, z),
-        (x, -y, -z),
-        (x, z, -y),
-        (x, -z, y),
-
-        (-x, y, -z),
-        (-x, -y, z),
-        (-x, z, y),
-        (-x, -z, -y),
-
-        (y, -x, z),
-        (y, x, -z),
-        (y, -z, -x),
-        (y, z, x),
-
-        (-y, x, z),
-        (-y, -x, -z),
-        (-y, z, -x),
-        (-y, -z, x),
-
-        (z, -x, -y),
-        (z, x, y),
-        (z, y, -x),
-        (z, -y, x),
-
-        (-z, x, -y),
-        (-z, -x, y),
-        (-z, y, x),
-        (-z, -y, -x),
-    ]
-
-    return swaps[code]
+def transform(tr, coords):
+    return transforms[tr](coords)
 
 
 # None or scanner 2 position relative to 1
 def check_scanner(scanner1, scanner2):
     for change in range(24):
-        transformed2 = list(map(lambda x: transform(change, x), scanner2))
+        for (cx, cy, cz) in scanner1:
 
-        for coord1 in scanner1:
-            for coord2 in transformed2:
-                # relative to reference
-                coord1_to_reference = set(map(lambda r1: sub(r1, coord1), scanner1))
-                coord2_to_reference = set(map(lambda r2: sub(r2, coord2), transformed2))
+            for coord2 in scanner2:
+                ref_x, ref_y, ref_z = transform(change, coord2)
 
-                if len(coord1_to_reference & coord2_to_reference) >= 12:
-                    return change, sub(coord1, coord2)
+                count = 0
+                for r2 in scanner2:
+                    x, y, z = transform(change, r2)
 
-    return 0, None
+                    if (cx + (x - ref_x), cy + (y - ref_y), cz + (z - ref_z)) in scanner1:
+                        count += 1
 
-def sub(v2, v1):
-    return v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]
+                        if count >= 12:
+                            return change, (cx - ref_x, cy - ref_y, cz - ref_z)
 
 
-def add(v1, v2):
-    return v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]
+# Our goal is to merge everyone into a new scanner
+composite_scanner = set(scanners[0])
+merged = {0}
+scanner_locations = {0: (0, 0, 0)}
 
+while len(merged) != len(scanners):
+    for j in filter(lambda x: x not in merged, range(1, len(scanners))):
+        res = check_scanner(composite_scanner, scanners[j])
+
+        if res is not None:
+            code, mapping = res
+
+            scanner_locations[j] = mapping
+            merged.add(j)
+
+            for b in scanners[j]:
+                t = transform(code, b)
+                composite_scanner.add((t[0] + mapping[0], t[1] + mapping[1], t[2] + mapping[2]))
+
+print('Part 1', len(composite_scanner))
 
 #
-# Discover the scanner mappings
+# Part 2
 #
+max_dist = 0
 
-mappings = {}
-
-for j in range(1, len(scanners)):
-    print(j)
-    for i in range(len(scanners)):
-        if i <= j:
+for i in range(len(scanner_locations)):
+    for j in range(len(scanner_locations)):
+        if i == j:
             continue
 
-        code, mapping = check_scanner(scanners[i], scanners[j])
+        a, b, c = scanner_locations[i]
+        d, e, f = scanner_locations[j]
 
-        if mapping is not None:
-            print('got mapping to', i)
-            print('apply', i)
-            mappings[j] = i, code, mapping
-            break
-print(mappings)
+        max_dist = max(max_dist, abs(d - a) + abs(e - b) + abs(f - c))
 
-final_mappings = {}
-binned = set(scanners[0])
+print('Part 2', max_dist)
 
-#
-# Now, make them all relative to 0
-#
-for k in mappings:
-    # 4, c3, t3
-    target, _, mapping = mappings[k]
-
-    while target != 0 and target in mappings:
-        # 1, c2, t2
-        #
-        target, target_code, target_mapping = mappings[target]
-
-        mapping = add(transform(target_code, mapping), target_mapping)
-
-    final_mappings[k] = mapping
-
-print(final_mappings)
-#
-# Now, count the number of unique beacons
-#
-for ix in range(1, len(scanners)):
-    beacons = scanners[ix]
-
-    for b in beacons:
-        target, code, _ = mappings[ix]
-
-        b = transform(code, b)
-
-        while target != 0:
-            target, code, _ = mappings[target]
-            b = transform(code, b)
-
-        binned.add(add(b, final_mappings[ix]))
-
-print(len(binned))
-
-
-
+# Improvements
+# Time: 8 hours
+# - There was one big key idea that immensely simplified the problem
+# - Test with asserts earlier, much wasted time re-writing the same attempts multiple times
+# - Much time spent on specifics, not conceptual
+# - Assumed code was working too quickly, causes doubt on other code in the solution
